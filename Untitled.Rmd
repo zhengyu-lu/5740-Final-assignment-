@@ -1,0 +1,145 @@
+---
+title: "Untitled"
+author: "Zhengyu Lu"
+date: '2022-12-03'
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+## Importing libraries
+library(MASS)
+library(randomForest)
+library(ggplot2)
+library(corrplot)
+library(caret)
+library(gbm)
+library(e1071)
+library(tree)
+whitequality <- read.csv("winequality-white.csv", sep = ";")
+head(whitequality)
+sum(is.na(whitequality))
+summary(whitequality)
+##Quality frequency
+ggplot(whitequality,aes(quality)) + geom_histogram(stat="count") +
+  xlab("Quality of white wines") + ylab("Number of white wines")
+##correlation
+M <- cor(whitequality)
+corrplot(M, method = "number")
+
+##scatter plot
+pairs(whitequality, panel=panel.smooth)
+
+##box plot
+ggplot(whitequality, aes(as.factor(quality),fixed.acidity))+ geom_boxplot()
+ggplot(whitequality, aes(as.factor(quality),volatile.acidity))+ geom_boxplot()
+ggplot(whitequality, aes(as.factor(quality),citric.acid))+ geom_boxplot()
+ggplot(whitequality, aes(as.factor(quality),residual.sugar))+ geom_boxplot()
+ggplot(whitequality, aes(as.factor(quality),chlorides))+ geom_boxplot()
+ggplot(whitequality, aes(as.factor(quality),free.sulfur.dioxide))+ geom_boxplot()
+ggplot(whitequality, aes(as.factor(quality),total.sulfur.dioxide))+ geom_boxplot()
+ggplot(whitequality, aes(as.factor(quality),density))+ geom_boxplot()
+ggplot(whitequality, aes(as.factor(quality),pH))+ geom_boxplot()
+ggplot(whitequality, aes(as.factor(quality),sulphates))+ geom_boxplot()
+ggplot(whitequality, aes(as.factor(quality),alcohol))+ geom_boxplot()
+
+
+##Create training and testing dataset)
+set.seed(1)
+index <- sort(sample(nrow(whitequality),nrow(whitequality)*0.85))
+train <- whitequality[index,]
+test <- whitequality[-index,]
+
+##linear regression
+lm.fit <- lm(quality~., data = train)
+summary(lm.fit)
+pre.lm <- predict(lm.fit, test)
+mean((pre.lm-test$quality)^2)
+
+train_control <- trainControl(method = "cv",
+                              number = 10)
+model <- train(quality ~., data = test, 
+               method = "lm",
+               trControl = train_control)
+print(model)
+
+#glm
+glm.fit <- glm(quality~., data=train)
+summary(glm.fit)
+pre.glm <- predict(glm.fit, test)
+mean((pre.glm-test$quality)^2)
+
+train_control <- trainControl(method = "cv",
+                              number = 10)
+model <- train(quality ~., data = test, 
+               method = "glm",
+               trControl = train_control)
+print(model)
+
+#LDA
+lda.fit <- lda(quality~., train)
+lda.predict <- predict(lda.fit, test)
+table(lda.predict$class, test$quality)
+mean(lda.predict$class !=test$quality)
+summary(lda.fit)
+
+##Naive Bayes
+nb.fit <- naiveBayes(quality~., data = train)
+nb.predict <- predict(nb.fit, test)
+table(nb.predict,test$quality)
+mean(nb.predict!=test$quality)
+
+#knn
+model_knn <- train(
+  quality ~.,
+  data = train,
+  method = 'knn'
+)
+model_knn
+plot(model_knn)
+pre.knn <- predict(model_knn, test)
+mean((pre.knn-test$quality)^2)
+
+## Regression Tree
+set.seed(2)
+tree.fit=tree(quality~.,train)
+summary(tree.fit)
+plot(tree.fit)
+text(tree.fit,pretty=0)
+pre.tree <- predict(tree.fit,test)
+plot(pre.tree,test$quality,xlim = c(4,8))
+abline(0,1)
+mean((pre.tree-test$quality)^2)
+
+## Random Forest
+rf.fit<- randomForest(quality ~.,data=train, importance=TRUE)
+pre.rf <- predict(rf.fit, test)
+plot(pre.rf, test$quality)
+abline(0,1)
+mean((pre.rf-test$quality)^2)
+importance(rf.fit)
+varImpPlot(rf.fit)
+
+train_control <- trainControl(method = "cv",
+                              number = 10)
+model <- train(quality ~., data = test, 
+               method = "rf",
+               trControl = train_control)
+print(model)
+
+
+## Boosting
+set.seed(1)
+boost.fit=gbm(quality~.,data=train,distribution="gaussian",n.trees=5000,interaction.depth=4)
+summary(boost.fit)
+pre.boost=predict(boost.fit,newdata=test,n.trees=5000)
+mean((pre.boost-test$quality)^2)
+
+
+
+
+
+
+```
+
